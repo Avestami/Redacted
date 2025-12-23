@@ -1,0 +1,46 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #0f172a;
+  --foreground: #f8fafc;
+  
+  --primary: #06b6d4;
+  --primary-foreground: #000000;
+  
+  --secondary: #1e293b;
+  --secondary-foreground: #f8fafc;
+  
+  --accent: #00d4ff;
+  --accent-foreground: #000000;
+  
+  --destructive: #ef4444;
+  --destructive-foreground: #f8fafc;
+  
+  --muted: #334155;
+  --muted-foreground: #94a3b8;
+  
+  --card: #1e293b;
+  --card-foreground: #f8fafc;
+  
+  --border: #334155;
+  --input: #334155;
+  --ring: #06b6d4;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+}
+
+@layer utilities {
+  .text-glow {
+    text-shadow: 0 0 10px rgba(6, 182, 212, 0.5);
+  }
+  
+  .border-glow {
+    box-shadow: 0 0 10px rgba(6, 182, 212, 0.3);
+  }
+}
