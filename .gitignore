@@ -39,3 +39,11 @@ yarn-error.log*
 .env.development
 .env.production
 .env.test
+
+# Large media
+*.mp3
+*.wav
+*.flac
+*.mp4
+*.mov
+frontend/public/audios/
