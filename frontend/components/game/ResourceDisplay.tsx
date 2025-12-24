@@ -1,6 +1,6 @@
 import React from 'react';
-import { Battery, Coins, Heart, Zap } from 'lucide-react';
-import Card from '@/components/ui/Card';
+import { Battery, Coins, Heart, Zap, Activity } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface ResourceDisplayProps {
     resources: {
@@ -11,41 +11,58 @@ interface ResourceDisplayProps {
     };
 }
 
+const ResourceItem = ({ 
+    icon: Icon, 
+    value, 
+    color, 
+    label
+}: { 
+    icon: any; 
+    value: string | number; 
+    color: string; 
+    label: string;
+}) => (
+    <div className="flex flex-col items-center mx-3 group">
+        <div className={cn("mb-1 transition-colors", color)}>
+            <Icon className="h-5 w-5" />
+        </div>
+        <div className="text-lg font-bold font-mono leading-none tracking-tighter">
+            {value}
+        </div>
+        <div className="text-[8px] uppercase text-muted-foreground tracking-widest mt-1 opacity-50 group-hover:opacity-100 transition-opacity">
+            {label}
+        </div>
+    </div>
+);
+
 const ResourceDisplay: React.FC<ResourceDisplayProps> = ({ resources }) => {
     return (
-        <Card className="flex items-center justify-between gap-4 bg-slate-900/90 sticky top-0 z-10">
-            <div className="flex items-center gap-2 text-yellow-400">
-                <Battery className="h-5 w-5" />
-                <div className="flex flex-col">
-                    <span className="text-xs text-slate-400 uppercase">Battery</span>
-                    <span className="font-mono font-bold">{resources.battery}%</span>
-                </div>
-            </div>
-            
-            <div className="flex items-center gap-2 text-cyan-400">
-                <Coins className="h-5 w-5" />
-                <div className="flex flex-col">
-                    <span className="text-xs text-slate-400 uppercase">Capital</span>
-                    <span className="font-mono font-bold">Credits {resources.capital}</span>
-                </div>
-            </div>
-
-            <div className="flex items-center gap-2 text-purple-400">
-                <Zap className="h-5 w-5" />
-                <div className="flex flex-col">
-                    <span className="text-xs text-slate-400 uppercase">Karma</span>
-                    <span className="font-mono font-bold">{resources.karma || 0}</span>
-                </div>
-            </div>
-
-            <div className="flex items-center gap-2 text-red-400">
-                <Heart className="h-5 w-5" />
-                <div className="flex flex-col">
-                    <span className="text-xs text-slate-400 uppercase">Health</span>
-                    <span className="font-mono font-bold">{resources.cyberhealth || 100}%</span>
-                </div>
-            </div>
-        </Card>
+        <div className="flex items-center divide-x divide-white/10">
+            <ResourceItem 
+                icon={Battery} 
+                value={`${resources.battery}%`} 
+                color="text-warning" 
+                label="PWR"
+            />
+            <ResourceItem 
+                icon={Coins} 
+                value={resources.capital} 
+                color="text-primary" 
+                label="CRD"
+            />
+            <ResourceItem 
+                icon={Zap} 
+                value={resources.karma || 0} 
+                color="text-accent" 
+                label="KRM"
+            />
+            <ResourceItem 
+                icon={Activity} 
+                value={`${resources.cyberhealth || 100}%`} 
+                color="text-destructive" 
+                label="HP"
+            />
+        </div>
     );
 };
 

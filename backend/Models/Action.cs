@@ -21,15 +21,14 @@ namespace Redacted.API.Models
         public Player? Player { get; set; }
 
         [Required]
-        [MaxLength(30)]
-        public string ActionType { get; set; } = string.Empty; // hack, analyze, heal, intel, protect, sabotage
+        public ActionType ActionType { get; set; }
 
         public Guid? TargetId { get; set; }
         [ForeignKey("TargetId")]
         public Player? Target { get; set; }
 
         [Column(TypeName = "jsonb")]
-        public string ResourceCost { get; set; } = "{}";
+        public string ResourceCost { get; set; } = "{}"; // e.g., { "Battery": 10 }
 
         [Column(TypeName = "jsonb")]
         public string Outcome { get; set; } = "{}";

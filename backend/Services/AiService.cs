@@ -1,89 +1,87 @@
-using Microsoft.ML;
-using Microsoft.ML.Data;
 using Microsoft.EntityFrameworkCore;
 using Redacted.API.Data;
 using Redacted.API.Models;
 using System;
+using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 using System.Text.Json;
+using System.Threading.Tasks;
 
 namespace Redacted.API.Services
 {
-    public class TrustData
-    {
-        [LoadColumn(0)]
-        public float Karma { get; set; }
-
-        [LoadColumn(1)]
-        public float ActionsPerformed { get; set; }
-
-        [LoadColumn(2)]
-        public bool IsMafia { get; set; } // Label for training
-    }
-
-    public class TrustPrediction
-    {
-        [ColumnName("Score")]
-        public float TrustScore { get; set; }
-    }
-
     public class AiService : IAiService
     {
         private readonly GameDbContext _context;
-        private readonly MLContext _mlContext;
 
         public AiService(GameDbContext context)
         {
             _context = context;
-            _mlContext = new MLContext(seed: 0);
         }
 
-        public async Task<AiAnalysis> AnalyzeGameAsync(Guid gameId)
+        public async Task AnalyzeGameAsync(Guid gameId)
         {
             var game = await _context.Games
                 .Include(g => g.Players)
-                .ThenInclude(p => p.Actions)
+                .Include(g => g.Actions)
                 .FirstOrDefaultAsync(g => g.Id == gameId);
 
-            if (game == null) return null;
+            if (game == null) return;
 
-            // Mock Analysis Logic for MVP
-            // In a real scenario, we would load a trained model and predict based on player actions
-            
-            var trustScores = new System.Collections.Generic.Dictionary<string, float>();
-            var patterns = new System.Collections.Generic.List<string>();
-
+            // Simple Trust Algorithm
+            var trustScores = new Dictionary<Guid, int>();
             foreach (var player in game.Players)
             {
-                // Simple heuristic for MVP: Trust = Karma + (Actions count * 0.5)
-                float score = player.Karma + (player.Actions.Count * 0.5f);
-                
-                // Normalize slightly
-                score = Math.Clamp(score, 0, 100);
-                
-                trustScores.Add(player.UserId, score);
+                trustScores[player.Id] = 50; // Base trust
+            }
 
-                if (player.Actions.Count > 5)
+            foreach (var action in game.Actions)
+            {
+                if (!trustScores.ContainsKey(action.PlayerId)) continue;
+
+                switch (action.ActionType)
                 {
-                    patterns.Add($"High activity detected from {player.UserId}");
+                    case ActionType.Hack:
+                    case ActionType.Sabotage:
+                        trustScores[action.PlayerId] -= 10;
+                        break;
+                    case ActionType.Work:
+                    case ActionType.Heal:
+                    case ActionType.Protect:
+                        trustScores[action.PlayerId] += 5;
+                        break;
+                    case ActionType.Analyze:
+                    case ActionType.GatherIntel:
+                        // Neutral or context dependent
+                        break;
                 }
+            }
+
+            // Normalize 0-100
+            foreach (var key in trustScores.Keys.ToList())
+            {
+                trustScores[key] = Math.Clamp(trustScores[key], 0, 100);
             }
 
             var analysis = new AiAnalysis
             {
                 GameId = gameId,
                 TrustMatrix = JsonSerializer.Serialize(trustScores),
-                BehavioralPatterns = JsonSerializer.Serialize(patterns),
-                Predictions = JsonSerializer.Serialize(new { outcome = "uncertain", topSuspect = "unknown" }),
-                Confidence = 0.75f,
+                Predictions = JsonSerializer.Serialize(new { status = "Monitoring", threatLevel = "Low" }),
+                Confidence = 0.85f,
+                TrainingDataSize = game.Actions.Count,
                 AnalyzedAt = DateTime.UtcNow
             };
 
             _context.AiAnalyses.Add(analysis);
             await _context.SaveChangesAsync();
+        }
 
-            return analysis;
+        public async Task<AiAnalysis?> GetLatestAnalysisAsync(Guid gameId)
+        {
+            return await _context.AiAnalyses
+                .Where(a => a.GameId == gameId)
+                .OrderByDescending(a => a.AnalyzedAt)
+                .FirstOrDefaultAsync();
         }
     }
 }

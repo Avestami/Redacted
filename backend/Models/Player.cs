@@ -20,17 +20,15 @@ namespace Redacted.API.Models
         public string UserId { get; set; } = string.Empty;
 
         [Required]
-        [MaxLength(20)]
-        public string Faction { get; set; } = "citizen"; // mafia1, mafia2, mafia3, citizen
+        public FactionType Faction { get; set; } = FactionType.Citizen;
 
         [Required]
-        [MaxLength(30)]
-        public string Role { get; set; } = "unemployed"; // hacker, analyst, doctor, intel, banker, farmer, cybersmith, whitehat, unemployed
+        public RoleType Role { get; set; } = RoleType.Unemployed;
 
         public bool IsActive { get; set; } = true;
 
-        public int Karma { get; set; } = 0;
-
+        // Core Resources
+        public int Karma { get; set; } = 50; // Start middle
         public int Cyberhealth { get; set; } = 100;
 
         public DateTime JoinedAt { get; set; } = DateTime.UtcNow;
@@ -38,6 +36,8 @@ namespace Redacted.API.Models
         public DateTime LastActionAt { get; set; } = DateTime.UtcNow;
 
         public ICollection<Action> Actions { get; set; } = new List<Action>();
+        
+        // We use a list, but logically it's often 1:1. EF Core handles this.
         public ICollection<Resource> Resources { get; set; } = new List<Resource>();
     }
 }

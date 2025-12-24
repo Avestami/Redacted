@@ -21,8 +21,8 @@ namespace Redacted.API.Controllers
         {
             try
             {
-                var success = await _playerService.PerformActionAsync(request.GameId, request.PlayerId, request.ActionType, request.TargetId, request.ResourceCost.ToString());
-                if (!success) return BadRequest("Action failed");
+                var success = await _playerService.PerformActionAsync(request.GameId, request.PlayerId, request.ActionType, request.TargetId, request.ResourceCost?.ToString() ?? "{}");
+                if (!success) return BadRequest("Action failed or invalid action type");
                 return Ok(new { success = true });
             }
             catch (Exception ex)
@@ -44,8 +44,8 @@ namespace Redacted.API.Controllers
     {
         public Guid GameId { get; set; }
         public Guid PlayerId { get; set; }
-        public string ActionType { get; set; }
+        public string ActionType { get; set; } = string.Empty;
         public Guid? TargetId { get; set; }
-        public object ResourceCost { get; set; }
+        public object? ResourceCost { get; set; }
     }
 }

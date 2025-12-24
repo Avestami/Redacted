@@ -22,15 +22,20 @@ namespace Redacted.API.Services
                 .FirstOrDefaultAsync(p => p.Id == playerId);
         }
 
-        public async Task<bool> PerformActionAsync(Guid gameId, Guid playerId, string actionType, Guid? targetId, string resourceCost)
+        public async Task<bool> PerformActionAsync(Guid gameId, Guid playerId, string actionTypeStr, Guid? targetId, string resourceCost)
         {
             var player = await _context.Players.FindAsync(playerId);
             if (player == null || player.GameId != gameId) return false;
 
+            if (!Enum.TryParse<ActionType>(actionTypeStr, true, out var actionType))
+            {
+                return false; // Invalid action type
+            }
+
             // Check if player has enough resources (mock logic for now)
             // In real implementation, parse resourceCost and deduct from player.Resources
-
-            var action = new Action
+            
+            var action = new Redacted.API.Models.Action
             {
                 GameId = gameId,
                 PlayerId = playerId,

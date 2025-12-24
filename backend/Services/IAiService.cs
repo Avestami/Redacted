@@ -6,6 +6,7 @@ namespace Redacted.API.Services
 {
     public interface IAiService
     {
-        Task<AiAnalysis> AnalyzeGameAsync(Guid gameId);
+        Task AnalyzeGameAsync(Guid gameId);
+        Task<AiAnalysis?> GetLatestAnalysisAsync(Guid gameId);
     }
 }

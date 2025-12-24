@@ -24,7 +24,8 @@ namespace Redacted.API.Services
                 HostId = hostId,
                 MaxPlayers = playerCount,
                 PhaseDurationMinutes = phaseDuration,
-                RoomCode = GenerateRoomCode()
+                RoomCode = GenerateRoomCode(),
+                Status = GameStatus.Waiting
             };
 
             _context.Games.Add(game);
@@ -43,7 +44,7 @@ namespace Redacted.API.Services
         {
             return await _context.Games
                 .Include(g => g.Players)
-                .Include(g => g.Resources)
+                    .ThenInclude(p => p.Resources)
                 .FirstOrDefaultAsync(g => g.Id == gameId);
         }
 
@@ -60,7 +61,7 @@ namespace Redacted.API.Services
                 throw new Exception("Game is full");
             }
 
-            if (game.Status != "waiting")
+            if (game.Status != GameStatus.Waiting)
             {
                 throw new Exception("Game has already started");
             }
@@ -69,7 +70,8 @@ namespace Redacted.API.Services
             {
                 GameId = game.Id,
                 UserId = userId,
-                // Roles and Factions will be assigned when game starts
+                Faction = FactionType.Citizen, // Default
+                Role = RoleType.Unemployed // Default
             };
 
             _context.Players.Add(player);
@@ -90,32 +92,20 @@ namespace Redacted.API.Services
         public async Task<bool> StartGameAsync(Guid gameId)
         {
             var game = await _context.Games.Include(g => g.Players).FirstOrDefaultAsync(g => g.Id == gameId);
-            if (game == null || game.Status != "waiting") return false;
+            if (game == null || game.Status != GameStatus.Waiting) return false;
 
-            // Assign roles logic here (simplified for MVP)
-            var random = new Random();
-            var players = game.Players.ToList();
-            int mafiaCount = players.Count / 3; // Approx 1/3 mafia
-
-            var shuffledPlayers = players.OrderBy(x => random.Next()).ToList();
-            
-            for (int i = 0; i < shuffledPlayers.Count; i++)
+            if (game.Players.Count < 3) // Minimum 3 for testing, ideally 6
             {
-                var player = shuffledPlayers[i];
-                if (i < mafiaCount)
-                {
-                    player.Faction = $"mafia{i % 3 + 1}"; // Distribute among 3 mafias
-                    player.Role = "hacker"; // Default role for now
-                }
-                else
-                {
-                    player.Faction = "citizen";
-                    player.Role = "unemployed"; // Default role
-                }
+                // For dev/MVP we allow 3, but warn
+                // throw new Exception("Need at least 3 players");
             }
 
-            game.Status = "act1";
-            game.CurrentPhase = "act1";
+            AssignRoles(game.Players.ToList());
+
+            game.Status = GameStatus.Act1;
+            game.CurrentPhase = "Act1";
+            game.ActNumber = 1;
+            game.TurnNumber = 1;
             
             await _context.SaveChangesAsync();
             return true;
@@ -124,8 +114,56 @@ namespace Redacted.API.Services
         public async Task<IEnumerable<Game>> GetActiveGamesAsync()
         {
             return await _context.Games
-                .Where(g => g.Status == "waiting")
+                .Where(g => g.Status == GameStatus.Waiting)
                 .ToListAsync();
+        }
+
+        private void AssignRoles(List<Player> players)
+        {
+            var random = new Random();
+            var shuffledPlayers = players.OrderBy(x => random.Next()).ToList();
+            int playerCount = shuffledPlayers.Count;
+
+            // 1/3 Mafia, rounded down, min 1 if count >= 3
+            int mafiaCount = Math.Max(1, playerCount / 3);
+            int citizenCount = playerCount - mafiaCount;
+
+            // Mafias
+            var mafiaPlayers = shuffledPlayers.Take(mafiaCount).ToList();
+            var citizenPlayers = shuffledPlayers.Skip(mafiaCount).ToList();
+
+            // Assign Mafia Factions and Roles
+            // Available Mafia Roles
+            var mafiaRoles = new List<RoleType> { RoleType.Hacker, RoleType.Analyst, RoleType.Doctor, RoleType.Intel };
+            
+            for (int i = 0; i < mafiaPlayers.Count; i++)
+            {
+                var p = mafiaPlayers[i];
+                // Distribute factions: A, B, C
+                int factionIndex = i % 3;
+                p.Faction = factionIndex switch
+                {
+                    0 => FactionType.MafiaA,
+                    1 => FactionType.MafiaB,
+                    _ => FactionType.MafiaC
+                };
+
+                // Assign random mafia role
+                p.Role = mafiaRoles[random.Next(mafiaRoles.Count)];
+            }
+
+            // Assign Citizen Roles
+            var citizenRoles = new List<RoleType> 
+            { 
+                RoleType.Banker, RoleType.Farmer, RoleType.Cybersmith, 
+                RoleType.CitizenDoctor, RoleType.WhiteHat, RoleType.Unemployed 
+            };
+
+            foreach (var p in citizenPlayers)
+            {
+                p.Faction = FactionType.Citizen;
+                p.Role = citizenRoles[random.Next(citizenRoles.Count)];
+            }
         }
 
         private string GenerateRoomCode()

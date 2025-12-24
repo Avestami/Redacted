@@ -15,13 +15,14 @@ namespace Redacted.API.Models
         public string RoomCode { get; set; } = string.Empty;
 
         [Required]
-        [MaxLength(20)]
-        public string Status { get; set; } = "waiting"; // waiting, act1, act2, act3, finished
+        public GameStatus Status { get; set; } = GameStatus.Waiting;
 
         [MaxLength(20)]
-        public string CurrentPhase { get; set; } = "setup";
+        public string CurrentPhase { get; set; } = "setup"; // e.g., "Day", "Night" or "Action", "Resolution"
 
         public int ActNumber { get; set; } = 1;
+        
+        public int TurnNumber { get; set; } = 1;
 
         public Guid HostId { get; set; }
 
