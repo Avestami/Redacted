@@ -17,6 +17,7 @@ const nextConfig: NextConfig = {
   basePath: "/redacted",
   env: {
     NEXT_PUBLIC_BASE_PATH: "/redacted",
+    NEXT_PUBLIC_API_URL: "/cts/api",
   },
 };
 
