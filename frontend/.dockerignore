@@ -1,0 +1,10 @@
+node_modules
+.next/cache
+.next/trace
+npm-debug.log
+Dockerfile
+*.md
+*.local
+*.env
+!.env.production
+!.env

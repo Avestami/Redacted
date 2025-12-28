@@ -2,7 +2,7 @@
 
 import React, { useMemo, useRef, useEffect } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { OrbitControls, MapControls, Stars, Html } from "@react-three/drei";
+import { OrbitControls, MapControls, Stars, Html, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 
 type CameraMode = "free" | "locked";
@@ -46,6 +46,9 @@ function isWithin(target: THREE.Vector3, x: number, z: number, r: number) {
   return dx * dx + dz * dz <= r * r;
 }
 
+const GROUND_Y = -1;
+const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+
 function CircularTerrain({ radius = 8, cityRadius = 3 }) {
   const geometry = useMemo(() => {
     const seg = 96;
@@ -76,7 +79,7 @@ function CircularTerrain({ radius = 8, cityRadius = 3 }) {
   }, [radius, cityRadius]);
 
   return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow geometry={geometry}>
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, GROUND_Y + 0.5, 0]} receiveShadow geometry={geometry}>
       <meshStandardMaterial color="#f3f6fb" roughness={0.95} metalness={0.05} />
     </mesh>
   );
@@ -84,16 +87,166 @@ function CircularTerrain({ radius = 8, cityRadius = 3 }) {
 
 function CityPadSquare({ size = 5.2 }: { size?: number }) {
   return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -1, 0]} receiveShadow>
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, GROUND_Y, 0]} receiveShadow>
       <planeGeometry args={[size, size]} />
       <meshStandardMaterial color="#e9edf3" roughness={1} metalness={0} />
     </mesh>
   );
 }
 
-function CityBuildingsTiles({ pov, radius = 2.4, tileSize = 1.1, renderRadius = 3.2 }: { pov: React.MutableRefObject<THREE.Vector3>; radius?: number; tileSize?: number; renderRadius?: number }) {
+function BuildingsGLTF({ path = `${BASE}/buildings/scene.gltf`, scale = 0.03 }: { path?: string; scale?: number }) {
+  const gltf: any = useGLTF(path);
+  useGLTF.preload(path);
+  const scene = gltf.scene.clone(true);
+  scene.rotation.set(0, 0, 0);
+  scene.updateMatrixWorld(true);
+  const bbox = new THREE.Box3().setFromObject(scene);
+  const baseOffset = -bbox.min.y;
+  return <primitive object={scene} position={[0, GROUND_Y + baseOffset * scale, 0]} scale={scale} />;
+}
+
+function CitySnowGround({ modelPath = `${BASE}/buildings/scene.gltf`, modelScale = 0.03, margin = 0.35, roadWidth = 0.18 }: { modelPath?: string; modelScale?: number; margin?: number; roadWidth?: number }) {
+  const gltf: any = useGLTF(modelPath);
+  useGLTF.preload(modelPath);
+  const bbox = useMemo(() => {
+    const s = gltf.scene.clone(true);
+    s.rotation.set(0, 0, 0);
+    s.updateMatrixWorld(true);
+    return new THREE.Box3().setFromObject(s);
+  }, [gltf.scene]);
+  const sizeX = (bbox.max.x - bbox.min.x) * modelScale;
+  const sizeZ = (bbox.max.z - bbox.min.z) * modelScale;
+  const padX = sizeX + margin * 2;
+  const padZ = sizeZ + margin * 2;
+  const y = GROUND_Y - 0.01;
+  const roads = useMemo(() => {
+    const m = new THREE.MeshStandardMaterial({ color: "#8e99a8", roughness: 1, metalness: 0 });
+    const g: THREE.Group = new THREE.Group();
+    const top = new THREE.Mesh(new THREE.PlaneGeometry(padX + roadWidth * 2, roadWidth), m);
+    top.rotation.x = -Math.PI / 2;
+    top.position.set(0, y, padZ / 2 + roadWidth / 2);
+    g.add(top);
+    const bottom = new THREE.Mesh(new THREE.PlaneGeometry(padX + roadWidth * 2, roadWidth), m);
+    bottom.rotation.x = -Math.PI / 2;
+    bottom.position.set(0, y, -padZ / 2 - roadWidth / 2);
+    g.add(bottom);
+    const left = new THREE.Mesh(new THREE.PlaneGeometry(roadWidth, padZ + roadWidth * 2), m);
+    left.rotation.x = -Math.PI / 2;
+    left.rotation.z = Math.PI / 2;
+    left.position.set(-padX / 2 - roadWidth / 2, y, 0);
+    g.add(left);
+    const right = new THREE.Mesh(new THREE.PlaneGeometry(roadWidth, padZ + roadWidth * 2), m);
+    right.rotation.x = -Math.PI / 2;
+    right.rotation.z = Math.PI / 2;
+    right.position.set(padX / 2 + roadWidth / 2, y, 0);
+    g.add(right);
+    return g;
+  }, [padX, padZ, y, roadWidth]);
+  return (
+    <>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, y, 0]} receiveShadow>
+        <planeGeometry args={[padX, padZ]} />
+        <meshStandardMaterial color="#f3f6fb" roughness={0.98} metalness={0.02} />
+      </mesh>
+      <primitive object={roads} />
+    </>
+  );
+}
+
+function LargeSnowTerrain({
+  modelPath = `${BASE}/buildings/scene.gltf`,
+  modelScale = 0.03,
+  extendX = 18,
+  extendZ = 18,
+  peak = 0.6,
+}: {
+  modelPath?: string;
+  modelScale?: number;
+  extendX?: number;
+  extendZ?: number;
+  peak?: number;
+}) {
+  const gltf: any = useGLTF(modelPath);
+  useGLTF.preload(modelPath);
+  const bbox = useMemo(() => {
+    const s = gltf.scene.clone(true);
+    s.rotation.set(0, 0, 0);
+    s.updateMatrixWorld(true);
+    return new THREE.Box3().setFromObject(s);
+  }, [gltf.scene]);
+  const sizeX = (bbox.max.x - bbox.min.x) * modelScale;
+  const sizeZ = (bbox.max.z - bbox.min.z) * modelScale;
+  const padX = sizeX + 0.35 * 2;
+  const padZ = sizeZ + 0.35 * 2;
+  const width = padX + extendX * 2;
+  const height = padZ + extendZ * 2;
+  const segmentsX = Math.max(128, Math.floor(width * 32));
+  const segmentsZ = Math.max(128, Math.floor(height * 32));
+  const geometry = useMemo(() => {
+    const geo = new THREE.PlaneGeometry(width, height, segmentsX, segmentsZ);
+    const pos = geo.attributes.position as THREE.BufferAttribute;
+    const rng = mulberry32(1337);
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i);
+      const z = pos.getY(i);
+      let h = -0.05;
+      const insidePad = Math.abs(x) <= padX / 2 && Math.abs(z) <= padZ / 2;
+      if (!insidePad) {
+        const nx = x * 0.12;
+        const nz = z * 0.12;
+        const wav1 = Math.sin(nx * 0.8) * 0.25 + Math.cos(nz * 1.1) * 0.2;
+        const wav2 = Math.sin((nx + nz) * 0.5) * 0.15;
+        const radial = Math.sin(Math.hypot(x, z) * 0.08) * 0.22;
+        const noise = (rng() - 0.5) * 0.25;
+        const dx = Math.max(0, Math.abs(x) - padX / 2);
+        const dz = Math.max(0, Math.abs(z) - padZ / 2);
+        const edge = Math.sqrt(dx * dx + dz * dz);
+        const t = Math.min(1, edge / 1.2);
+        h = (wav1 + wav2 + radial + noise) * peak * t;
+      }
+      pos.setZ(i, h);
+    }
+    geo.computeVertexNormals();
+    return geo;
+  }, [width, height, segmentsX, segmentsZ, padX, padZ, peak]);
+  return (
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, GROUND_Y, 0]} receiveShadow geometry={geometry}>
+      <meshStandardMaterial color="#f3f6fb" roughness={0.98} metalness={0.02} />
+    </mesh>
+  );
+}
+
+function CityBuildingsTiles({
+  pov,
+  radius = 2.4,
+  tileSize = 1.1,
+  renderRadius = 3.2,
+  modelPath = `${BASE}/buildings/scene.gltf`,
+}: {
+  pov: React.MutableRefObject<THREE.Vector3>;
+  radius?: number;
+  tileSize?: number;
+  renderRadius?: number;
+  modelPath?: string;
+}) {
   const centers = useMemo(() => generateTileCenters(radius, tileSize), [radius, tileSize]);
   const rng = useMemo(() => mulberry32(7777), []);
+  const gltf: any = useGLTF(modelPath);
+  useGLTF.preload(modelPath);
+  let gltfGeom: THREE.BufferGeometry | null = null;
+  let gltfMat: THREE.Material | null = null;
+  let bbox: THREE.Box3 | null = null;
+  gltf.scene.traverse((child: any) => {
+    if (!gltfGeom && child.isMesh) {
+      gltfGeom = child.geometry;
+      gltfMat = child.material;
+      if (!child.geometry.boundingBox) child.geometry.computeBoundingBox();
+      bbox = child.geometry.boundingBox;
+    }
+  });
+  const baseOffset = useMemo(() => (bbox ? -bbox.min.y : 0), [bbox]);
+  const sXZ = 0.1;
+  const sY = 0.12;
   const tiles = useMemo(() => {
     return centers.map(([cx, cz]) => {
       const count = 1 + Math.floor(rng() * 2);
@@ -103,12 +256,11 @@ function CityBuildingsTiles({ pov, radius = 2.4, tileSize = 1.1, renderRadius = 
         const lz = (rng() - 0.5) * tileSize * 0.9;
         const x = cx + lx;
         const z = cz + lz;
-        const h = 0.6 + rng() * 1.8;
-        const s = 0.32 + rng() * 0.45;
         const m = new THREE.Matrix4();
         const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, rng() * Math.PI * 2, 0));
-        const v = new THREE.Vector3(x, h * 0.5 - 1, z);
-        m.compose(v, q, new THREE.Vector3(s, 1, s));
+        const y = GROUND_Y + baseOffset * sY;
+        const v = new THREE.Vector3(x, y, z);
+        m.compose(v, q, new THREE.Vector3(sXZ, sY, sXZ));
         transforms.push(m);
       }
       return { center: new THREE.Vector3(cx, -1, cz), transforms };
@@ -125,16 +277,24 @@ function CityBuildingsTiles({ pov, radius = 2.4, tileSize = 1.1, renderRadius = 
           tile.transforms.forEach((m, i) => meshRef.current!.setMatrixAt(i, m));
           meshRef.current.instanceMatrix.needsUpdate = true;
         }, [meshRef.current]);
-        return (
-          <instancedMesh
-            key={idx}
-            ref={meshRef}
-            args={[new THREE.BoxGeometry(0.55, 1.2, 0.55), undefined as unknown as THREE.Material, tile.transforms.length]}
-            visible={visible}
-          >
-            <meshStandardMaterial color="#263142" roughness={0.6} metalness={0.1} />
-          </instancedMesh>
-        );
+        if (gltfGeom && gltfMat) {
+          return (
+            <instancedMesh key={idx} ref={meshRef} args={[gltfGeom, gltfMat as any, tile.transforms.length]} visible={visible}>
+              {/* material from gltf */}
+            </instancedMesh>
+          );
+        } else {
+          return (
+            <instancedMesh
+              key={idx}
+              ref={meshRef}
+              args={[new THREE.BoxGeometry(0.28, 0.45, 0.28), undefined as unknown as THREE.Material, tile.transforms.length]}
+              visible={visible}
+            >
+              <meshStandardMaterial color="#263142" roughness={0.6} metalness={0.1} />
+            </instancedMesh>
+          );
+        }
       })}
     </>
   );
@@ -364,10 +524,9 @@ function SceneContent({ cameraMode, children }: { cameraMode: CameraMode; childr
       <Stars radius={40} depth={20} count={800} factor={3} saturation={0} fade />
       <ambientLight intensity={0.25} color={"#9fb0c4"} />
       <directionalLight position={[-10, 18, 8]} intensity={0.9} color={"#e5eef8"} />
-      <CircularTerrain radius={12} cityRadius={3.2} />
-      <CityPadSquare size={5.5} />
-      <CityGridRoads radius={2.4} pov={pov} renderRadius={3.2} />
-      <CityBuildingsTiles pov={pov} radius={2.4} tileSize={1.1} renderRadius={3.2} />
+      <LargeSnowTerrain modelPath={"/buildings/scene.gltf"} modelScale={0.03} extendX={28} extendZ={28} peak={0.6} />
+      <CitySnowGround modelPath={"/buildings/scene.gltf"} modelScale={0.03} margin={0.35} roadWidth={0.18} />
+      <BuildingsGLTF path={"/buildings/scene.gltf"} scale={0.03} />
       <SnowParticles pov={pov} count={120} renderRadius={5.5} />
       {children}
     </>
