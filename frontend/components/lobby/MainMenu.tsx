@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
-import { Play, Plus, RefreshCw, Users, Globe, ChevronRight } from 'lucide-react';
-import Button from '@/components/ui/Button';
+import { RefreshCw, Users, Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface MainMenuProps {
     userId: string;
-    activeGames: any[];
+    activeGames: Array<{ id: string; roomCode: string; players?: unknown[] }>;
     loading: boolean;
     onCreateGame: () => void;
     onJoinGame: (code: string) => void;

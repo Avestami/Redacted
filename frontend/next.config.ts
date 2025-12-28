@@ -1,10 +1,11 @@
 import type { NextConfig } from "next";
-const withPWA = require("@ducanh2912/next-pwa").default({
+import nextPWA from "@ducanh2912/next-pwa";
+
+const withPWA = nextPWA({
   dest: "public",
   cacheOnFrontEndNav: true,
   aggressiveFrontEndNavCaching: true,
   reloadOnOnline: true,
-  swcMinify: true,
   disable: process.env.NODE_ENV === "development",
   workboxOptions: {
     disableDevLogs: true,
@@ -12,7 +13,11 @@ const withPWA = require("@ducanh2912/next-pwa").default({
 });
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  output: "standalone",
+  basePath: "/redacted",
+  env: {
+    NEXT_PUBLIC_BASE_PATH: "/redacted",
+  },
 };
 
 export default withPWA(nextConfig);

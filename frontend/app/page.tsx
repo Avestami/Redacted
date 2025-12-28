@@ -1,17 +1,33 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { joinGame, getActiveGames } from '@/services/api';
 import WorldMap, { GameNode } from '@/features/map/components/WorldMap';
 import ClashHUD from '@/features/game/components/ClashHUD';
 
+type ActiveGame = { id: string; roomCode: string };
+
 export default function Home() {
   const router = useRouter();
-  const [activeGames, setActiveGames] = useState<any[]>([]);
+  const [activeGames, setActiveGames] = useState<ActiveGame[]>([]);
   const [loading, setLoading] = useState(false);
   const [userId, setUserId] = useState('');
   const [cameraMode, setCameraMode] = useState<'free' | 'locked'>('locked');
+  void loading;
+
+  const fetchGames = useCallback(async () => {
+    setLoading(true);
+    try {
+      const games = (await getActiveGames()) as unknown as ActiveGame[];
+      setActiveGames(games);
+      localStorage.setItem('cached_games', JSON.stringify(games));
+    } catch (error) {
+      console.error('Failed to fetch games:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     let storedId = localStorage.getItem('userId');
@@ -35,20 +51,7 @@ export default function Home() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
-
-  const fetchGames = async () => {
-    setLoading(true);
-    try {
-      const games = await getActiveGames();
-      setActiveGames(games);
-      localStorage.setItem('cached_games', JSON.stringify(games));
-    } catch (error) {
-      console.error('Failed to fetch games:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [fetchGames]);
 
   const handleJoinGame = async (code: string) => {
     if (!code) return;

@@ -34,7 +34,7 @@ export const startGame = async (gameId: string) => {
     return response.data;
 };
 
-export const performAction = async (gameId: string, playerId: string, actionType: string, targetId?: string, resourceCost?: any) => {
+export const performAction = async (gameId: string, playerId: string, actionType: string, targetId?: string, resourceCost?: unknown) => {
     const response = await api.post('/player/action', { gameId, playerId, actionType, targetId, resourceCost });
     return response.data;
 };

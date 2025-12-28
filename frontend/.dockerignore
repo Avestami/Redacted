@@ -6,5 +6,3 @@ Dockerfile
 *.md
 *.local
 *.env
-!.env.production
-!.env

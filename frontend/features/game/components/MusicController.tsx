@@ -3,12 +3,11 @@
 import React, { useEffect, useRef, useState } from "react";
 
 export default function MusicController() {
-  const [enabled, setEnabled] = useState(false);
+  const [enabled, setEnabled] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("music_enabled") === "true";
+  });
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  useEffect(() => {
-    const saved = localStorage.getItem("music_enabled");
-    if (saved === "true") setEnabled(true);
-  }, []);
   useEffect(() => {
     localStorage.setItem("music_enabled", enabled ? "true" : "false");
     if (!audioRef.current) return;
@@ -33,4 +32,3 @@ export default function MusicController() {
     </div>
   );
 }
-

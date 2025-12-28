@@ -5,8 +5,9 @@ import { cn } from "@/lib/utils";
 import Button from "@/features/ui/components/Button";
 import MusicController from "./MusicController";
 import { Trophy, Mail, Swords, Users, Map as MapIcon, Settings, ShoppingBag, Play, Battery, Coins, ShieldCheck, Lock, Unlock } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
-const ResourcePill = ({ icon: Icon, label, value, color }: { icon: any; label: string; value: number | string; color: string }) => (
+const ResourcePill = ({ icon: Icon, label, value, color }: { icon: LucideIcon; label: string; value: number | string; color: string }) => (
   <div className={cn("flex items-center gap-2 px-3 py-2 rounded-full border text-xs font-bold font-mono", color, "bg-black/40 backdrop-blur-md border-white/10 text-white")}>
     <Icon className="w-4 h-4" />
     <span className="uppercase">{label}</span>
@@ -14,7 +15,7 @@ const ResourcePill = ({ icon: Icon, label, value, color }: { icon: any; label: s
   </div>
 );
 
-const IconButton = ({ icon: Icon, label, onClick }: { icon: any; label: string; onClick?: () => void }) => (
+const IconButton = ({ icon: Icon, label, onClick }: { icon: LucideIcon; label: string; onClick?: () => void }) => (
   <button onClick={onClick} className="w-12 h-12 md:w-14 md:h-14 rounded-xl bg-black/50 border border-white/10 backdrop-blur-md flex items-center justify-center text-white hover:bg-white/10 transition-colors pointer-events-auto">
     <Icon className="w-6 h-6" />
     <span className="sr-only">{label}</span>
@@ -72,4 +73,3 @@ export default function ClashHUD({
     </div>
   );
 }
-

@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 
 interface ActionPanelProps {
   onAction: (actionType: string, targetId?: string) => void;
-  players: any[];
+  players: Array<{ id: string; userId?: string }>;
   currentPlayerId: string;
   selectedTargetId?: string | null;
 }
@@ -14,6 +14,7 @@ interface ActionPanelProps {
 const ActionPanel: React.FC<ActionPanelProps> = ({ onAction, players, currentPlayerId, selectedTargetId }) => {
   const [selectedAction, setSelectedAction] = useState<string | null>(null);
   useEffect(() => {}, [selectedTargetId]);
+  const isSelfTarget = selectedTargetId === currentPlayerId;
   const handleExecute = () => {
     if (selectedAction) {
       onAction(selectedAction, selectedTargetId || undefined);
@@ -45,7 +46,7 @@ const ActionPanel: React.FC<ActionPanelProps> = ({ onAction, players, currentPla
           {targetPlayer && (
             <div className="text-right">
               <div className="text-[10px] text-muted-foreground">STATUS</div>
-              <div className="text-xs font-bold text-accent">VULNERABLE</div>
+              <div className="text-xs font-bold text-accent">{isSelfTarget ? "SELF" : "VULNERABLE"}</div>
             </div>
           )}
         </div>

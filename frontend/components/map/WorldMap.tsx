@@ -1,12 +1,28 @@
 "use client";
 
-import React, { useRef, useState, useEffect } from "react";
+import React, { useMemo, useRef } from "react";
 import { motion } from "framer-motion";
 import { User, Globe } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+function mulberry32(a: number) {
+  return function () {
+    let t = (a += 0x6d2b79f5);
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+type MapItem = {
+  id: string;
+  roomCode?: string;
+  userId?: string;
+  players?: unknown[];
+};
+
 interface WorldMapProps {
-  items: any[];
+  items: MapItem[];
   currentItemId?: string;
   onSelect?: (id: string) => void;
   selectedId?: string | null;
@@ -20,25 +36,17 @@ export default function WorldMap({
   selectedId,
   mapType = "game",
 }: WorldMapProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [constraints, setConstraints] = useState({
-    left: 0,
-    top: 0,
-    right: 0,
-    bottom: 0,
-  });
+  const constraintsRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const width = window.innerWidth;
-      const height = window.innerHeight;
-      setConstraints({
-        left: -2400 + width,
-        top: -2400 + height,
-        right: 0,
-        bottom: 0,
-      });
-    }
+  const blocks = useMemo(() => {
+    const rng = mulberry32(424242);
+    return Array.from({ length: 24 }).map(() => ({
+      left: rng() * 2200 + 100,
+      top: rng() * 2200 + 100,
+      width: rng() * 120 + 60,
+      height: rng() * 120 + 60,
+      rot: rng() * 360,
+    }));
   }, []);
 
   return (
@@ -54,102 +62,103 @@ export default function WorldMap({
         }}
       />
 
-      <motion.div
-        ref={containerRef}
-        drag
-        dragConstraints={constraints}
-        dragElastic={0.12}
-        className="relative w-[2400px] h-[2400px] cursor-grab active:cursor-grabbing"
-      >
-        <div
-          className="absolute inset-0"
-          style={{
-            backgroundImage:
-              "linear-gradient(#1e293b 1px, transparent 1px), linear-gradient(90deg, #1e293b 1px, transparent 1px)",
-            backgroundSize: "60px 60px",
-          }}
-        />
-
-        {Array.from({ length: 24 }).map((_, i) => (
+      <div ref={constraintsRef} className="absolute inset-0 overflow-hidden">
+        <motion.div
+          drag
+          dragConstraints={constraintsRef}
+          dragElastic={0.12}
+          className="relative w-[2400px] h-[2400px] cursor-grab active:cursor-grabbing"
+        >
           <div
-            key={`block-${i}`}
-            className="absolute bg-white/5 border border-white/10"
+            className="absolute inset-0"
             style={{
-              left: Math.random() * 2200 + 100,
-              top: Math.random() * 2200 + 100,
-              width: Math.random() * 120 + 60,
-              height: Math.random() * 120 + 60,
-              transform: `rotate(${Math.random() * 360}deg)`,
+              backgroundImage:
+                "linear-gradient(#1e293b 1px, transparent 1px), linear-gradient(90deg, #1e293b 1px, transparent 1px)",
+              backgroundSize: "60px 60px",
             }}
           />
-        ))}
 
-        {items.map((item: any) => {
-          const seedX = item.id ? String(item.id) + "x" : String(item.roomCode) + "x";
-          const seedY = item.id ? String(item.id) + "y" : String(item.roomCode) + "y";
-          const pseudo = (s: string) => {
-            let h = 0;
-            for (let i = 0; i < s.length; i++) h = s.charCodeAt(i) + ((h << 5) - h);
-            return (Math.abs(h) % 2200) + 100;
-          };
-          const x = pseudo(seedX);
-          const y = pseudo(seedY);
-          const isSelected = selectedId === item.id;
-          const isMe = currentItemId && item.id === currentItemId;
-          const label =
-            mapType === "lobby"
-              ? item.roomCode
-              : item.userId
-              ? String(item.userId).substring(0, 4)
-              : "";
-          const subLabel =
-            mapType === "lobby"
-              ? `${item.players?.length || 0}/8`
-              : isMe
-              ? "YOU"
-              : "";
-
-          return (
+          {blocks.map((b, i) => (
             <div
-              key={item.id}
-              className="absolute -translate-x-1/2 -translate-y-1/2 transition-all duration-300"
-              style={{ left: x, top: y }}
-              onClick={(e) => {
-                e.stopPropagation();
-                onSelect && onSelect(item.id);
+              key={`block-${i}`}
+              className="absolute bg-white/5 border border-white/10"
+              style={{
+                left: b.left,
+                top: b.top,
+                width: b.width,
+                height: b.height,
+                transform: `rotate(${b.rot}deg)`,
               }}
-            >
-              {isSelected && (
-                <div className="absolute inset-0 -m-4 border-2 border-accent rounded-full animate-ping opacity-50 pointer-events-none" />
-              )}
+            />
+          ))}
+
+          {items.map((item) => {
+            const seedX = item.id ? String(item.id) + "x" : String(item.roomCode) + "x";
+            const seedY = item.id ? String(item.id) + "y" : String(item.roomCode) + "y";
+            const pseudo = (s: string) => {
+              let h = 0;
+              for (let i = 0; i < s.length; i++) h = s.charCodeAt(i) + ((h << 5) - h);
+              return (Math.abs(h) % 2200) + 100;
+            };
+            const x = pseudo(seedX);
+            const y = pseudo(seedY);
+            const isSelected = selectedId === item.id;
+            const isMe = currentItemId && item.id === currentItemId;
+            const label =
+              mapType === "lobby"
+                ? item.roomCode
+                : item.userId
+                ? String(item.userId).substring(0, 4)
+                : "";
+            const subLabel =
+              mapType === "lobby"
+                ? `${item.players?.length || 0}/8`
+                : isMe
+                ? "YOU"
+                : "";
+
+            return (
               <div
-                className={cn(
-                  "relative flex flex-col items-center justify-center w-24 h-24 clip-hex backdrop-blur-sm",
-                  isSelected
-                    ? "bg-accent/80 text-black z-50 scale-110 shadow-[0_0_20px_rgba(255,0,60,0.5)]"
-                    : isMe
-                    ? "bg-primary/30 border-2 border-primary text-primary z-40 shadow-[0_0_15px_rgba(0,243,255,0.3)]"
-                    : "bg-secondary/80 border border-primary/30 text-primary z-10 hover:z-30 hover:bg-secondary hover:border-primary"
-                )}
+                key={item.id}
+                className="absolute -translate-x-1/2 -translate-y-1/2 transition-all duration-300"
+                style={{ left: x, top: y }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSelect?.(item.id);
+                }}
               >
-                {mapType === "lobby" ? (
-                  <Globe className="w-8 h-8" />
-                ) : (
-                  <User className="w-8 h-8" />
+                {isSelected && (
+                  <div className="absolute inset-0 -m-4 border-2 border-accent rounded-full animate-ping opacity-50 pointer-events-none" />
                 )}
-                <div className="text-xs font-mono mt-1 font-bold tracking-widest">
-                  {label}
-                </div>
-                {subLabel && (
-                  <div className="text-[9px] uppercase tracking-wider opacity-80 font-bold">
-                    {subLabel}
+                <div
+                  className={cn(
+                    "relative flex flex-col items-center justify-center w-24 h-24 clip-hex backdrop-blur-sm",
+                    isSelected
+                      ? "bg-accent/80 text-black z-50 scale-110 shadow-[0_0_20px_rgba(255,0,60,0.5)]"
+                      : isMe
+                      ? "bg-primary/30 border-2 border-primary text-primary z-40 shadow-[0_0_15px_rgba(0,243,255,0.3)]"
+                      : "bg-secondary/80 border border-primary/30 text-primary z-10 hover:z-30 hover:bg-secondary hover:border-primary"
+                  )}
+                >
+                  {mapType === "lobby" ? (
+                    <Globe className="w-8 h-8" />
+                  ) : (
+                    <User className="w-8 h-8" />
+                  )}
+                  <div className="text-xs font-mono mt-1 font-bold tracking-widest">
+                    {label}
                   </div>
-                )}
+                  {subLabel && (
+                    <div className="text-[9px] uppercase tracking-wider opacity-80 font-bold">
+                      {subLabel}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          );
-        })}
-      </motion.div>
+            );
+          })}
+        </motion.div>
+      </div>
 
       <style jsx global>{`
         .clip-hex {
@@ -159,4 +168,3 @@ export default function WorldMap({
     </div>
   );
 }
-

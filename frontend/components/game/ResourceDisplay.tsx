@@ -1,6 +1,7 @@
 import React from 'react';
-import { Battery, Coins, Heart, Zap, Activity } from 'lucide-react';
+import { Battery, Coins, Zap, Activity } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import type { LucideIcon } from "lucide-react";
 
 interface ResourceDisplayProps {
     resources: {
@@ -17,7 +18,7 @@ const ResourceItem = ({
     color, 
     label
 }: { 
-    icon: any; 
+    icon: LucideIcon; 
     value: string | number; 
     color: string; 
     label: string;

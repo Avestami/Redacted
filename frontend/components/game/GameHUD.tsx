@@ -1,20 +1,17 @@
-import React, { useState } from 'react';
-import { Shield, Target, Zap, Activity, Menu, X, Crosshair } from 'lucide-react';
+import React from 'react';
+import { Shield, Target, Zap, Activity, Crosshair } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import Button from '@/components/ui/Button';
 import ResourceDisplay from './ResourceDisplay';
 
 interface GameHUDProps {
-    game: any;
-    currentPlayer: any;
+    game: { roomCode?: string } | null;
+    currentPlayer: { karma?: number; cyberhealth?: number } | null;
     selectedTargetId: string | null;
     onAction: (type: string, targetId?: string) => void;
     children?: React.ReactNode; // For the map
 }
 
 export default function GameHUD({ game, currentPlayer, selectedTargetId, onAction, children }: GameHUDProps) {
-    const [isMenuOpen, setIsMenuOpen] = useState(false);
-
     const actions = [
         { id: 'hack', label: 'HACK', icon: Zap, color: 'text-destructive', border: 'border-destructive' },
         { id: 'analyze', label: 'SCAN', icon: Target, color: 'text-primary', border: 'border-primary' },
@@ -68,7 +65,7 @@ export default function GameHUD({ game, currentPlayer, selectedTargetId, onActio
                         <button
                             key={action.id}
                             onClick={() => onAction(action.id, selectedTargetId || undefined)}
-                            disabled={!selectedTargetId && action.id !== 'intel'}
+                            disabled={!selectedTargetId}
                             className={cn(
                                 "relative group flex flex-col items-center justify-center w-20 h-20 bg-black/80 border-2 transition-all duration-200 clip-path-hex-button active:scale-95 disabled:opacity-30 disabled:grayscale",
                                 action.border,

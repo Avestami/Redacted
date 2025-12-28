@@ -1,41 +1,33 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import React, { useCallback, useEffect, useState } from 'react';
+import { useParams } from 'next/navigation';
 import { getGame, performAction } from '@/services/api';
 import WorldMap from '@/components/map/WorldMap';
 import GameHUD from '@/components/game/GameHUD';
 import AudioPlayer from '@/components/game/AudioPlayer';
 import SnowEffect from '@/components/ui/SnowEffect';
 
+type Player = { id: string; userId: string; karma?: number; cyberhealth?: number };
+type Game = { roomCode?: string; players?: Player[] };
+
 export default function GameRoom() {
     const params = useParams();
-    const router = useRouter();
     const gameId = params.id as string;
     
-    const [game, setGame] = useState<any>(null);
-    const [currentPlayer, setCurrentPlayer] = useState<any>(null);
+    const [game, setGame] = useState<Game | null>(null);
+    const [currentPlayer, setCurrentPlayer] = useState<Player | null>(null);
     const [loading, setLoading] = useState(true);
-    const [userId, setUserId] = useState('');
     const [selectedTargetId, setSelectedTargetId] = useState<string | null>(null);
 
-    useEffect(() => {
-        const storedId = localStorage.getItem('userId');
-        if (storedId) setUserId(storedId);
-        fetchGameState();
-        
-        const interval = setInterval(fetchGameState, 2000); // Faster polling for smoother feel
-        return () => clearInterval(interval);
-    }, []);
-
-    const fetchGameState = async () => {
+    const fetchGameState = useCallback(async () => {
         try {
-            const gameData = await getGame(gameId);
+            const gameData = (await getGame(gameId)) as unknown as Game;
             setGame(gameData);
             
             const storedId = localStorage.getItem('userId');
             if (storedId && gameData.players) {
-                const player = gameData.players.find((p: any) => p.userId === storedId);
+                const player = gameData.players.find((p) => p.userId === storedId) ?? null;
                 setCurrentPlayer(player);
             }
         } catch (error) {
@@ -43,7 +35,13 @@ export default function GameRoom() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [gameId]);
+
+    useEffect(() => {
+        fetchGameState();
+        const interval = setInterval(fetchGameState, 2000);
+        return () => clearInterval(interval);
+    }, [fetchGameState]);
 
     const handleAction = async (actionType: string, targetId?: string) => {
         if (!currentPlayer) return;
@@ -79,7 +77,7 @@ export default function GameRoom() {
                 onAction={handleAction}
             >
                 <WorldMap 
-                    items={game.players} 
+                    items={game.players ?? []} 
                     currentItemId={currentPlayer?.id} 
                     onSelect={setSelectedTargetId}
                     selectedId={selectedTargetId}

@@ -4,6 +4,7 @@ import React, { useMemo, useRef, useEffect } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, MapControls, Stars, Html, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
+import type { OrbitControls as OrbitControlsImpl, MapControls as MapControlsImpl } from "three-stdlib";
 
 type CameraMode = "free" | "locked";
 
@@ -29,73 +30,11 @@ function mulberry32(a: number) {
   };
 }
 
-// --- Tile Utilities ---
-function generateTileCenters(radius: number, tileSize: number) {
-  const centers: Array<[number, number]> = [];
-  for (let x = -radius; x <= radius; x += tileSize) {
-    for (let z = -radius; z <= radius; z += tileSize) {
-      if (x * x + z * z <= radius * radius) centers.push([x, z]);
-    }
-  }
-  return centers;
-}
-
-function isWithin(target: THREE.Vector3, x: number, z: number, r: number) {
-  const dx = x - target.x;
-  const dz = z - target.z;
-  return dx * dx + dz * dz <= r * r;
-}
-
 const GROUND_Y = -1;
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
-function CircularTerrain({ radius = 8, cityRadius = 3 }) {
-  const geometry = useMemo(() => {
-    const seg = 96;
-    const geo = new THREE.CircleGeometry(radius, seg);
-    const pos = geo.attributes.position as THREE.BufferAttribute;
-    const rng = mulberry32(1234);
-    for (let i = 0; i < pos.count; i++) {
-      const x = pos.getX(i);
-      const y = pos.getY(i);
-      const r = Math.sqrt(x * x + y * y);
-      let h = 0;
-      if (r > cityRadius) {
-        const t = (r - cityRadius) / (radius - cityRadius);
-        const ang = Math.atan2(y, x);
-        const base = t * 1.6;
-        const wav1 = Math.sin(ang * 2.7 + r * 0.22) * 0.7 * t;
-        const wav2 = Math.cos(ang * 4.3 + r * 0.18) * 0.5 * t;
-        const radial = Math.sin(r * 0.35) * 0.4 * t;
-        const noise = (rng() - 0.5) * 0.12 * t;
-        h = base + wav1 + wav2 + radial + noise;
-      } else {
-        h = (rng() - 0.5) * 0.05;
-      }
-      pos.setZ(i, h - 1.5);
-    }
-    geo.computeVertexNormals();
-    return geo;
-  }, [radius, cityRadius]);
-
-  return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, GROUND_Y + 0.5, 0]} receiveShadow geometry={geometry}>
-      <meshStandardMaterial color="#f3f6fb" roughness={0.95} metalness={0.05} />
-    </mesh>
-  );
-}
-
-function CityPadSquare({ size = 5.2 }: { size?: number }) {
-  return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, GROUND_Y, 0]} receiveShadow>
-      <planeGeometry args={[size, size]} />
-      <meshStandardMaterial color="#e9edf3" roughness={1} metalness={0} />
-    </mesh>
-  );
-}
-
 function BuildingsGLTF({ path = `${BASE}/buildings/scene.gltf`, scale = 0.03 }: { path?: string; scale?: number }) {
-  const gltf: any = useGLTF(path);
+  const gltf = useGLTF(path) as unknown as { scene: THREE.Group };
   useGLTF.preload(path);
   const scene = gltf.scene.clone(true);
   scene.rotation.set(0, 0, 0);
@@ -106,7 +45,7 @@ function BuildingsGLTF({ path = `${BASE}/buildings/scene.gltf`, scale = 0.03 }: 
 }
 
 function CitySnowGround({ modelPath = `${BASE}/buildings/scene.gltf`, modelScale = 0.03, margin = 0.35, roadWidth = 0.18 }: { modelPath?: string; modelScale?: number; margin?: number; roadWidth?: number }) {
-  const gltf: any = useGLTF(modelPath);
+  const gltf = useGLTF(modelPath) as unknown as { scene: THREE.Group };
   useGLTF.preload(modelPath);
   const bbox = useMemo(() => {
     const s = gltf.scene.clone(true);
@@ -166,7 +105,7 @@ function LargeSnowTerrain({
   extendZ?: number;
   peak?: number;
 }) {
-  const gltf: any = useGLTF(modelPath);
+  const gltf = useGLTF(modelPath) as unknown as { scene: THREE.Group };
   useGLTF.preload(modelPath);
   const bbox = useMemo(() => {
     const s = gltf.scene.clone(true);
@@ -216,128 +155,6 @@ function LargeSnowTerrain({
   );
 }
 
-function CityBuildingsTiles({
-  pov,
-  radius = 2.4,
-  tileSize = 1.1,
-  renderRadius = 3.2,
-  modelPath = `${BASE}/buildings/scene.gltf`,
-}: {
-  pov: React.MutableRefObject<THREE.Vector3>;
-  radius?: number;
-  tileSize?: number;
-  renderRadius?: number;
-  modelPath?: string;
-}) {
-  const centers = useMemo(() => generateTileCenters(radius, tileSize), [radius, tileSize]);
-  const rng = useMemo(() => mulberry32(7777), []);
-  const gltf: any = useGLTF(modelPath);
-  useGLTF.preload(modelPath);
-  let gltfGeom: THREE.BufferGeometry | null = null;
-  let gltfMat: THREE.Material | null = null;
-  let bbox: THREE.Box3 | null = null;
-  gltf.scene.traverse((child: any) => {
-    if (!gltfGeom && child.isMesh) {
-      gltfGeom = child.geometry;
-      gltfMat = child.material;
-      if (!child.geometry.boundingBox) child.geometry.computeBoundingBox();
-      bbox = child.geometry.boundingBox;
-    }
-  });
-  const baseOffset = useMemo(() => (bbox ? -bbox.min.y : 0), [bbox]);
-  const sXZ = 0.1;
-  const sY = 0.12;
-  const tiles = useMemo(() => {
-    return centers.map(([cx, cz]) => {
-      const count = 1 + Math.floor(rng() * 2);
-      const transforms: THREE.Matrix4[] = [];
-      for (let i = 0; i < count; i++) {
-        const lx = (rng() - 0.5) * tileSize * 0.9;
-        const lz = (rng() - 0.5) * tileSize * 0.9;
-        const x = cx + lx;
-        const z = cz + lz;
-        const m = new THREE.Matrix4();
-        const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, rng() * Math.PI * 2, 0));
-        const y = GROUND_Y + baseOffset * sY;
-        const v = new THREE.Vector3(x, y, z);
-        m.compose(v, q, new THREE.Vector3(sXZ, sY, sXZ));
-        transforms.push(m);
-      }
-      return { center: new THREE.Vector3(cx, -1, cz), transforms };
-    });
-  }, [centers, rng, tileSize]);
-
-  return (
-    <>
-      {tiles.map((tile, idx) => {
-        const visible = isWithin(pov.current, tile.center.x, tile.center.z, renderRadius);
-        const meshRef = useRef<THREE.InstancedMesh>(null);
-        useEffect(() => {
-          if (!meshRef.current) return;
-          tile.transforms.forEach((m, i) => meshRef.current!.setMatrixAt(i, m));
-          meshRef.current.instanceMatrix.needsUpdate = true;
-        }, [meshRef.current]);
-        if (gltfGeom && gltfMat) {
-          return (
-            <instancedMesh key={idx} ref={meshRef} args={[gltfGeom, gltfMat as any, tile.transforms.length]} visible={visible}>
-              {/* material from gltf */}
-            </instancedMesh>
-          );
-        } else {
-          return (
-            <instancedMesh
-              key={idx}
-              ref={meshRef}
-              args={[new THREE.BoxGeometry(0.28, 0.45, 0.28), undefined as unknown as THREE.Material, tile.transforms.length]}
-              visible={visible}
-            >
-              <meshStandardMaterial color="#263142" roughness={0.6} metalness={0.1} />
-            </instancedMesh>
-          );
-        }
-      })}
-    </>
-  );
-}
-
-function CityGridRoads({ radius = 2.4, pov, renderRadius = 3.2 }: { radius?: number; pov: React.MutableRefObject<THREE.Vector3>; renderRadius?: number }) {
-  const material = useMemo(() => new THREE.MeshStandardMaterial({ color: "#8e99a8", roughness: 1, metalness: 0 }), []);
-  const group = useRef<THREE.Group>(null);
-  useEffect(() => {
-    if (!group.current) return;
-    const spacing = 0.6;
-    for (let x = -radius; x <= radius; x += spacing) {
-      const len = Math.sqrt(radius * radius - x * x) * 2;
-      if (len <= 0.2) continue;
-      const geo = new THREE.PlaneGeometry(0.05, len);
-      const m = new THREE.Mesh(geo, material);
-      m.rotation.x = -Math.PI / 2;
-      m.position.set(x, -1.48, 0);
-      group.current.add(m);
-    }
-    for (let z = -radius; z <= radius; z += spacing) {
-      const len = Math.sqrt(radius * radius - z * z) * 2;
-      if (len <= 0.2) continue;
-      const geo = new THREE.PlaneGeometry(0.05, len);
-      const m = new THREE.Mesh(geo, material);
-      m.rotation.x = -Math.PI / 2;
-      m.rotation.z = Math.PI / 2;
-      m.position.set(0, -1.48, z);
-      group.current.add(m);
-    }
-  }, [material, radius]);
-  useFrame(() => {
-    if (!group.current) return;
-    const r2 = renderRadius * renderRadius;
-    group.current.children.forEach((child: any) => {
-      const dx = child.position.x - pov.current.x;
-      const dz = child.position.z - pov.current.z;
-      child.visible = dx * dx + dz * dz <= r2;
-    });
-  });
-  return <group ref={group} />;
-}
-
 function GameNode({ position, label, onClick, isActive }: NodeProps) {
   return (
     <group position={position}>
@@ -353,7 +170,7 @@ function GameNode({ position, label, onClick, isActive }: NodeProps) {
 }
 
 function CameraController({ mode, radius = 8, pov }: { mode: CameraMode; radius?: number; pov: React.MutableRefObject<THREE.Vector3> }) {
-  const controlsRef = useRef<any>(null);
+  const controlsRef = useRef<OrbitControlsImpl | MapControlsImpl | null>(null);
   const { camera, invalidate } = useThree();
 
   useFrame(() => {
@@ -437,15 +254,29 @@ function CameraController({ mode, radius = 8, pov }: { mode: CameraMode; radius?
 
 function SnowParticles({ pov, count = 120, renderRadius = 5.5 }: { pov: React.MutableRefObject<THREE.Vector3>; count?: number; renderRadius?: number }) {
   const mesh = useRef<THREE.Points>(null);
-  const positions = useMemo(() => new Float32Array(count * 3), [count]);
+  const respawnRng = useMemo(() => mulberry32(20241229 + count), [count]);
+  const positions = useMemo(() => {
+    const rng = mulberry32(20241229 + 1000 + count);
+    const p = new Float32Array(count * 3);
+    for (let i = 0; i < count; i++) {
+      const ang = rng() * Math.PI * 2;
+      const r = rng() * renderRadius;
+      p[i * 3] = Math.cos(ang) * r;
+      p[i * 3 + 1] = 2 + rng() * 6;
+      p[i * 3 + 2] = Math.sin(ang) * r;
+    }
+    return p;
+  }, [count, renderRadius]);
   const drift = useMemo(() => {
+    const rng = mulberry32(20241229 + 2000 + count);
     const d = new Float32Array(count);
-    for (let i = 0; i < count; i++) d[i] = (Math.random() - 0.5) * 0.02;
+    for (let i = 0; i < count; i++) d[i] = (rng() - 0.5) * 0.02;
     return d;
   }, [count]);
   const speeds = useMemo(() => {
+    const rng = mulberry32(20241229 + 3000 + count);
     const s = new Float32Array(count);
-    for (let i = 0; i < count; i++) s[i] = 0.03 + Math.random() * 0.05;
+    for (let i = 0; i < count; i++) s[i] = 0.03 + rng() * 0.05;
     return s;
   }, [count]);
   const { invalidate } = useThree();
@@ -466,16 +297,9 @@ function SnowParticles({ pov, count = 120, renderRadius = 5.5 }: { pov: React.Mu
     return tex;
   }, []);
   useEffect(() => {
-    for (let i = 0; i < count; i++) {
-      const ang = Math.random() * Math.PI * 2;
-      const r = Math.random() * renderRadius;
-      positions[i * 3] = pov.current.x + Math.cos(ang) * r;
-      positions[i * 3 + 1] = 2 + Math.random() * 6;
-      positions[i * 3 + 2] = pov.current.z + Math.sin(ang) * r;
-    }
     const id = setInterval(() => invalidate(), 42);
     return () => clearInterval(id);
-  }, [count, positions, pov, renderRadius]);
+  }, [invalidate]);
   useFrame(() => {
     if (!mesh.current) return;
     const pos = (mesh.current.geometry as THREE.BufferGeometry).getAttribute("position") as THREE.BufferAttribute;
@@ -484,10 +308,10 @@ function SnowParticles({ pov, count = 120, renderRadius = 5.5 }: { pov: React.Mu
       let y = pos.getY(i) - speeds[i];
       let z = pos.getZ(i);
       if (y < -1.6) {
-        const ang = Math.random() * Math.PI * 2;
-        const r = Math.random() * renderRadius;
+        const ang = respawnRng() * Math.PI * 2;
+        const r = respawnRng() * renderRadius;
         x = pov.current.x + Math.cos(ang) * r;
-        y = 2 + Math.random() * 6;
+        y = 2 + respawnRng() * 6;
         z = pov.current.z + Math.sin(ang) * r;
       }
       pos.setXYZ(i, x, y, z);
@@ -506,7 +330,7 @@ function SnowParticles({ pov, count = 120, renderRadius = 5.5 }: { pov: React.Mu
         opacity={0.7}
         sizeAttenuation
         depthWrite={false}
-        map={snowTexture as any}
+        map={snowTexture}
         alphaTest={0.2}
       />
     </points>

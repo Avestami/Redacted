@@ -19,11 +19,11 @@ const AiPanel: React.FC = () => {
           </div>
           <div className="flex-1 space-y-3 overflow-y-auto custom-scrollbar pr-2 font-mono text-xs">
             <p className="text-muted-foreground italic leading-relaxed">
-              "The snow keeps falling, burying the city's secrets. I've got 8 suspects in the grid. One of them is lying. The machine knows it. I just need to prove it."
+              &quot;The snow keeps falling, burying the city&apos;s secrets. I&apos;ve got 8 suspects in the grid. One of them is lying. The machine knows it. I just need to prove it.&quot;
             </p>
             <div className="p-2 rounded bg-accent/10 border-l-2 border-accent text-accent/90 mt-2">
               <span className="font-bold uppercase text-[10px] block mb-1">Observation</span>
-              Subject 'User_7' showing erratic resource spikes. Probability of betrayal: 42%.
+              Subject &apos;User_7&apos; showing erratic resource spikes. Probability of betrayal: 42%.
             </div>
             <div className="text-primary/50 text-[10px] mt-2 animate-pulse">Processing new evidence...</div>
           </div>
@@ -34,4 +34,3 @@ const AiPanel: React.FC = () => {
 };
 
 export default AiPanel;
-

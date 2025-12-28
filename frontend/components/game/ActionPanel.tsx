@@ -1,18 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Eye, Laptop, Activity, Zap, Radio, Crosshair } from 'lucide-react';
+import { Eye, Laptop, Activity, Zap, Radio, Crosshair } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import { cn } from '@/lib/utils';
 
 interface ActionPanelProps {
     onAction: (actionType: string, targetId?: string) => void;
-    players: any[];
+    players: Array<{ id: string; userId?: string }>;
     currentPlayerId: string;
     selectedTargetId?: string | null;
 }
 
 const ActionPanel: React.FC<ActionPanelProps> = ({ onAction, players, currentPlayerId, selectedTargetId }) => {
     const [selectedAction, setSelectedAction] = useState<string | null>(null);
+    const isSelfTarget = selectedTargetId === currentPlayerId;
 
     useEffect(() => {
         if (!selectedTargetId) {
@@ -34,7 +35,7 @@ const ActionPanel: React.FC<ActionPanelProps> = ({ onAction, players, currentPla
         { id: 'intel', label: 'INTEL', icon: Radio, color: 'text-warning', bg: 'hover:bg-warning/10', desc: 'Gather data' },
     ];
 
-    const targetPlayer = players.find(p => p.id === selectedTargetId);
+    const targetPlayer = players.find((p) => p.id === selectedTargetId);
 
     return (
         <Card title="ACTION_MENU" className="h-full border-primary/20 bg-card/60 backdrop-blur-md">
@@ -55,7 +56,7 @@ const ActionPanel: React.FC<ActionPanelProps> = ({ onAction, players, currentPla
                     {targetPlayer && (
                         <div className="text-right">
                             <div className="text-[10px] text-muted-foreground">STATUS</div>
-                            <div className="text-xs font-bold text-accent">VULNERABLE</div>
+                            <div className="text-xs font-bold text-accent">{isSelfTarget ? "SELF" : "VULNERABLE"}</div>
                         </div>
                     )}
                 </div>

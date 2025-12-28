@@ -1,19 +1,12 @@
 "use client";
 
-import React, { useRef, useState, useEffect } from 'react';
-import { User, MapPin, Globe } from 'lucide-react';
+import React, { useMemo, useRef } from 'react';
+import { User, Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 
-interface MapNode {
-    id: string;
-    label: string;
-    subLabel?: string;
-    type?: 'player' | 'game' | 'resource';
-}
-
 interface CityMapProps {
-    items: any[];
+    items: Array<{ id: string; roomCode?: string; userId?: string; players?: unknown[] }>;
     currentItemId?: string;
     onSelect?: (id: string) => void;
     selectedId?: string | null;
@@ -22,19 +15,23 @@ interface CityMapProps {
 
 export default function CityMap({ items, currentItemId, onSelect, selectedId, mapType = 'game' }: CityMapProps) {
     const containerRef = useRef<HTMLDivElement>(null);
-    const [constraints, setConstraints] = useState({ left: 0, top: 0, right: 0, bottom: 0 });
 
-    useEffect(() => {
-        if (typeof window !== 'undefined') {
-            const width = window.innerWidth;
-            const height = window.innerHeight;
-            setConstraints({
-                left: -2000 + width,
-                top: -2000 + height,
-                right: 0,
-                bottom: 0
-            });
-        }
+    const blocks = useMemo(() => {
+        let seed = 1337;
+        const rng = () => {
+            seed |= 0;
+            seed = (seed + 0x6D2B79F5) | 0;
+            let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+            t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+            return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+        return Array.from({ length: 20 }).map(() => ({
+            left: rng() * 1800 + 100,
+            top: rng() * 1800 + 100,
+            width: rng() * 100 + 50,
+            height: rng() * 100 + 50,
+            rot: rng() * 360,
+        }));
     }, []);
 
     return (
@@ -50,31 +47,31 @@ export default function CityMap({ items, currentItemId, onSelect, selectedId, ma
                  }} 
             />
 
+            <div ref={containerRef} className="absolute inset-0 overflow-hidden">
             <motion.div
-                ref={containerRef}
                 drag
-                dragConstraints={constraints}
+                dragConstraints={containerRef}
                 dragElastic={0.1}
                 className="relative w-[2000px] h-[2000px] cursor-grab active:cursor-grabbing"
             >
                 {/* Map Content Layer */}
                 <div className="absolute inset-0">
                     {/* Decorative City Blocks (Static) - Adds "Map" feel */}
-                    {Array.from({ length: 20 }).map((_, i) => (
+                    {blocks.map((b, i) => (
                         <div 
                             key={`block-${i}`}
                             className="absolute bg-white/5 border border-white/10"
                             style={{
-                                left: Math.random() * 1800 + 100,
-                                top: Math.random() * 1800 + 100,
-                                width: Math.random() * 100 + 50,
-                                height: Math.random() * 100 + 50,
-                                transform: `rotate(${Math.random() * 360}deg)`
+                                left: b.left,
+                                top: b.top,
+                                width: b.width,
+                                height: b.height,
+                                transform: `rotate(${b.rot}deg)`
                             }}
                         />
                     ))}
 
-                    {items.map((item, i) => {
+                    {items.map((item) => {
                         const pseudoRandom = (seed: string) => {
                             let hash = 0;
                             for (let i = 0; i < seed.length; i++) hash = seed.charCodeAt(i) + ((hash << 5) - hash);
@@ -96,7 +93,7 @@ export default function CityMap({ items, currentItemId, onSelect, selectedId, ma
                                 style={{ left: x, top: y }}
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    onSelect && onSelect(item.id);
+                                    onSelect?.(item.id);
                                 }}
                             >
                                 {isSelected && (
@@ -127,6 +124,7 @@ export default function CityMap({ items, currentItemId, onSelect, selectedId, ma
                     })}
                 </div>
             </motion.div>
+            </div>
 
             <style jsx global>{`
                 .clip-path-hex {

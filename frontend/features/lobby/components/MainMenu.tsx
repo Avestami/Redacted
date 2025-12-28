@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 interface MainMenuProps {
   onCreateGame: () => void;
   onJoinGame: (code: string) => void;
-  activeGames: any[];
+  activeGames: Array<{ id: string; roomCode: string; players?: unknown[] }>;
   onRefreshGames: () => void;
   userId: string;
   loading?: boolean;
@@ -140,4 +140,3 @@ export default function MainMenu({
     </div>
   );
 }
-

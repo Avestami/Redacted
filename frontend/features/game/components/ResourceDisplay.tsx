@@ -1,6 +1,7 @@
 import React from "react";
 import { Battery, Coins, Zap, Activity } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { LucideIcon } from "lucide-react";
 
 interface ResourceDisplayProps {
   resources: {
@@ -17,7 +18,7 @@ const ProgressBar = ({ value, color, max = 100 }: { value: number; color: string
   </div>
 );
 
-const ResourceItem = ({ icon: Icon, label, value, color, barColor }: { icon: any; label: string; value: string | number; color: string; barColor: string }) => (
+const ResourceItem = ({ icon: Icon, label, value, color, barColor }: { icon: LucideIcon; label: string; value: string | number; color: string; barColor: string }) => (
   <div className="flex-1 bg-black/60 border border-white/10 p-2 rounded backdrop-blur-md hover:bg-black/80 transition-colors group">
     <div className="flex items-center gap-3">
       <div className={cn("p-2 rounded bg-white/5 border border-white/5", color)}>
@@ -46,4 +47,3 @@ const ResourceDisplay: React.FC<ResourceDisplayProps> = ({ resources }) => {
 };
 
 export default ResourceDisplay;
-
