@@ -1,5 +1,7 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
+ENV NEXT_PUBLIC_BASE_PATH=/redacted
+ENV NEXT_PUBLIC_API_URL=/cts/api
 COPY package.json ./
 RUN npm install --no-audit --no-fund
 COPY . .
