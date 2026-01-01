@@ -19,6 +19,14 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_BASE_PATH: "/redacted",
     NEXT_PUBLIC_API_URL: "/cts/api",
   },
+  async rewrites() {
+    return [
+      {
+        "source": "/cts/api/:path*",
+        "destination": "http://localhost:5152/api/:path*"
+      }
+    ]
+  },
   experimental: {
     serverActions: {
       allowedOrigins: ["blckbrd.ir", "*.blckbrd.ir", "localhost:3000"],
