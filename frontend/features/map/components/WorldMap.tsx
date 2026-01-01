@@ -31,7 +31,7 @@ function mulberry32(a: number) {
 }
 
 const GROUND_Y = -1;
-const BASE = process.env.NEXT_PUBLIC_BASE_PATH || "/redacted";
+const BASE = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
 function BuildingsGLTF({ path = `${BASE}/buildings/scene.gltf`, scale = 0.005 }: { path?: string; scale?: number }) {
   const gltf = useGLTF(path) as unknown as { scene: THREE.Group };

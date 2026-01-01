@@ -21,7 +21,7 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     serverActions: {
-      allowedOrigins: ["blckbrd.ir", "*.blckbrd.ir"],
+      allowedOrigins: ["blckbrd.ir", "*.blckbrd.ir", "localhost:3000"],
     },
   },
 };
