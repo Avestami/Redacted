@@ -33,15 +33,36 @@ function mulberry32(a: number) {
 const GROUND_Y = -1;
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH || "/redacted";
 
-function BuildingsGLTF({ path = `${BASE}/buildings/scene.gltf`, scale = 0.03 }: { path?: string; scale?: number }) {
+function BuildingsGLTF({ path = `${BASE}/buildings/scene.gltf`, scale = 0.005 }: { path?: string; scale?: number }) {
   const gltf = useGLTF(path) as unknown as { scene: THREE.Group };
   useGLTF.preload(path);
   const scene = gltf.scene.clone(true);
-  scene.rotation.set(0, 0, 0);
+  // User requested 90 degree rotation to stand them up
+  scene.rotation.set(-Math.PI / 2, 0, 0); 
   scene.updateMatrixWorld(true);
   const bbox = new THREE.Box3().setFromObject(scene);
   const baseOffset = -bbox.min.y;
   return <primitive object={scene} position={[0, GROUND_Y + baseOffset * scale, 0]} scale={scale} />;
+}
+
+function Ground1GLTF({ path = `${BASE}/ground1.gltf`, scale = 0.005 }: { path?: string; scale?: number }) {
+  const gltf = useGLTF(path) as unknown as { scene: THREE.Group };
+  useGLTF.preload(path);
+  
+  const tiles = useMemo(() => {
+    const group = new THREE.Group();
+    // Simple 3x3 tiling
+    for (let x = -1; x <= 1; x++) {
+      for (let z = -1; z <= 1; z++) {
+        const tile = gltf.scene.clone(true);
+        tile.position.set(x * 10, 0, z * 10); // Adjust spacing based on model size
+        group.add(tile);
+      }
+    }
+    return group;
+  }, [gltf.scene]);
+
+  return <primitive object={tiles} position={[0, GROUND_Y, 0]} scale={scale} />;
 }
 
 function CitySnowGround({ modelPath = `${BASE}/buildings/scene.gltf`, modelScale = 0.03, margin = 0.35, roadWidth = 0.18 }: { modelPath?: string; modelScale?: number; margin?: number; roadWidth?: number }) {
@@ -348,9 +369,8 @@ function SceneContent({ cameraMode, children }: { cameraMode: CameraMode; childr
       <Stars radius={40} depth={20} count={800} factor={3} saturation={0} fade />
       <ambientLight intensity={0.25} color={"#9fb0c4"} />
       <directionalLight position={[-10, 18, 8]} intensity={0.9} color={"#e5eef8"} />
-      <LargeSnowTerrain modelPath={"/buildings/scene.gltf"} modelScale={0.03} extendX={28} extendZ={28} peak={0.6} />
-      <CitySnowGround modelPath={"/buildings/scene.gltf"} modelScale={0.03} margin={0.35} roadWidth={0.18} />
-      <BuildingsGLTF path={"/buildings/scene.gltf"} scale={0.03} />
+      <Ground1GLTF path={`${BASE}/ground1.gltf`} scale={0.005} />
+      <BuildingsGLTF path={`${BASE}/buildings/scene.gltf`} scale={0.005} />
       <SnowParticles pov={pov} count={120} renderRadius={5.5} />
       {children}
     </>

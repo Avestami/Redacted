@@ -19,6 +19,9 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_BASE_PATH: "/redacted",
     NEXT_PUBLIC_API_URL: "/cts/api",
   },
+  experimental: {
+    allowedDevOrigins: ["blckbrd.ir", "*.blckbrd.ir"],
+  },
 };
 
 export default withPWA(nextConfig);
