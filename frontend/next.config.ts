@@ -20,7 +20,9 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_API_URL: "/cts/api",
   },
   experimental: {
-    allowedDevOrigins: ["blckbrd.ir", "*.blckbrd.ir"],
+    serverActions: {
+      allowedOrigins: ["blckbrd.ir", "*.blckbrd.ir"],
+    },
   },
 };
 
